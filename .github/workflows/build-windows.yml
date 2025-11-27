@@ -1,7 +1,10 @@
-name: build-windows
+name: build-windows-portable
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - sv-ursaluna-speedcheck
 
 jobs:
   build:
@@ -24,8 +27,21 @@ jobs:
         shell: pwsh
         run: cmake --build build
 
-      - name: Upload artifact
+      - name: Package (windeployqt)
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter SerialPrograms.exe | Select-Object -First 1
+          if (-not $exe) { throw "SerialPrograms.exe not found" }
+
+          $outDir = Join-Path $pwd "portable"
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          Copy-Item $exe.FullName $outDir
+
+          $windeploy = Join-Path (Join-Path $env:Qt6_DIR "bin") "windeployqt.exe"
+          & $windeploy (Join-Path $outDir "SerialPrograms.exe")
+
+      - name: Upload artifact (portable)
         uses: actions/upload-artifact@v4
         with:
-          name: SerialPrograms-windows
-          path: build
+          name: SerialPrograms-portable-windows
+          path: portable
